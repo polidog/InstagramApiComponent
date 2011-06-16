@@ -84,10 +84,10 @@ class InstagramApiComponent extends Object
 	var $apiBaseUrl	= "http://api.instagram.com/v1/";
 
 	/**
-	 * access token
+	 * access tokenを保存するためn
 	 * @var object 
 	 */
-	var $accessTokenSessionName = "instagram.accessToken";
+	var $sessionBaseName = "instagram";
 	
 	/**
 	 * HttpSocket instance
@@ -128,7 +128,7 @@ class InstagramApiComponent extends Object
 			}
 		}
 		App::import('Core', 'HttpSocket');
-		$this->HttpSocket = new HttpSockect();
+		$this->HttpSocket = new HttpSocket();
 		
 	}
 	
@@ -137,9 +137,10 @@ class InstagramApiComponent extends Object
 	 * @param AppController $controller
 	 */
 	function startup(&$controller) {
-	
+		if ( !empty($this->oauthCallbackUrl) ) {
+			$this->oauthCallbackUrl = Router::url($this->oauthCallbackUrl,true);
+		}
 	}
-	
 	
 	/**
 	 * OAuth認証を開始する
@@ -151,15 +152,12 @@ class InstagramApiComponent extends Object
 		
 		$scope = null;
 		if ( is_array($this->scope) ) {
-			$scope = implode('+', $this->scope);
+			$scope = implode(' ', $this->scope);
 		}
-		
-		$params = array(
-		);
 		
 		$url = $this->authorizeUrl.DS."?".http_build_query(array(
 			'client_id' => $this->clientId,
-			'redirect_url' => $this->oauthCallbackUrl,
+			'redirect_uri' => $this->oauthCallbackUrl,
 			'response_type' => 'code',
 			'scope' => $scope,			
 		));
@@ -172,11 +170,13 @@ class InstagramApiComponent extends Object
 	 */
 	function oauthCallback() {
 		$code = null;
-		if ( !isset($this->_controller->params['named']['code']) ) { 
-			$code = $this->_controller->params['named']['code'];
+		if ( isset($this->_controller->params['url']['code']) ) { 
+			$code = $this->_controller->params['url']['code'];
 		}
 		$accessToken = $this->getAccessTokne($code);
-		$this->Session->write($this->accessTokenSessionName,$accessToken);
+		
+		$this->saveAccessToken($accessToken['access_token']);
+		return $accessToken;
 	}
 	
 	/**
@@ -186,11 +186,18 @@ class InstagramApiComponent extends Object
 	 */
 	function getAccessTokne($code = null) {
 		if ( is_null($code) ) return false;
+		$uri = $this->accessTokenUrl."?".http_build_query(array(
+			'client_id' => $this->clientId,
+			'client_secret' => $this->clientSecret,
+			'grant_type'	=> 'authorization_code',
+			'redirect_uri' => $this->oauthCallbackUrl,
+			'code' => $code,			
+		));
 		$accessToken = $this->HttpSocket->post($this->accessTokenUrl,array(
 			'client_id' => $this->clientId,
 			'client_secret' => $this->clientSecret,
 			'grant_type'	=> 'authorization_code',
-			'redirect_url' => $this->oauthCallbackUrl,
+			'redirect_uri' => $this->oauthCallbackUrl,
 			'code' => $code,			
 		));
 		if ( $accessToken ) {
@@ -199,6 +206,70 @@ class InstagramApiComponent extends Object
 		return $accessToken;
 	}
 
+	/**
+	 * @param string $accessToken
+	 */
+	function saveAccessToken($accessToken) {
+		$this->Session->write($this->sessionBaseName.'.accessToken',$accessToken);
+	}
+	
+	/**
+	 * 保存しているアクセストークンを取得する
+	 * @return string
+	 */
+	function readAccessToken() {
+		return $this->Session->read($this->sessionBaseName.'.accessToken');		
+	}
+	
+	/**
+	 * APIをコールする
+	 * @param string $path
+	 * @param array $data
+	 * @param string $method
+	 * @param boolean $assoc
+	 */
+	function callApi($path,$data = array(),$method='get',$decode = true,$assoc = true) {
+		$accessToken = $this->readAccessToken();
+		if ( !$accessToken ) {
+			return false;
+		}		
+		$url = $this->apiBaseUrl.$path.'?access_token='.$accessToken;
+		$result = $this->HttpSocket->$method($url,$data);
+		if ( $decode ) {
+			$result = json_decode($result,$assoc);
+		}
+		return $result;
+	}
+	
+	
+	function getUsers() {
+		
+	}
+	
+	/**
+	 * __callメソッドの実装
+	 * @param string $method
+	 * @param array $args
+	 */
+	function __call( $method, $args ) {
+		$pattern = "/^(api)([a-zA-Z1-9_]*)/i";
+		if ( preg_match($pattern, $method, $matches) ) {
+			if ( isset($matches[2]) ) {
+				
+				$apiPath = strtolower(preg_replace('/(?<=\\w)([A-Z])/', '/\\1', $matches[2]));
+				$apiArgs = array($apiPath);
+				
+				if ( is_array($args) ) {
+					foreach($args as $arg ) {
+						$apiArgs[] = $arg;
+					}
+				}
+				return call_user_func_array( array( $this, 'callApi'), $apiArgs);
+			}
+		}		
+	}
+	
+	
 	/**
 	 * リダイレクト処理を行う
 	 * @param string $type	$this->redirectUrlのキーまたはURLを指定する
