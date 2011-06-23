@@ -1,1 +1,27 @@
-あとで書きます。。。
+h1. これはなに？
+
+cakePHPでインスタグラムAPIを使用するためのAPIラッパーコンポーネントです。
+
+h2. 使い方
+
+# まずはインスタグラムのデベロッパーサイトからアプリケーションの登録をしてください
+http://instagram.com/developer/manage/
+# 続いて、AppContorllerなどの適切なコントローラにInstagramApiComponentを使用するように指定してください。
+例:
+var $components = array('InstagramApi');
+#あとはコントローラに1で登録したときに取得した情報を記載します。
+例:
+	var $instagramApi = array(
+		'clientId' => 'xxxxxx',
+		'clientSecret' => 'xxxxxxxxxxxxx',
+		'oauthCallbackUrl' => 'http://polidog.jp/session/instCallback',
+	);
+
+詳しくはSampleControllerを見るのがいいかと思います。
+
+h2. 今後の実装予定機能について
+
+今後暇があったら更新します。。
+* autoOAuth認証
+* オーバーロードの対応
+
