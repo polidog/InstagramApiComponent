@@ -30,4 +30,13 @@ class SampleController extends AppController
 		// accessTokenだけを取得する
 		var_dump($this->InstagramApi->readAccessToken());
 	}
+	
+	/**
+	 * OAuth後にAPIコールする場合
+	 */
+	function callapitest() {
+		//　ユーザー名を検索してみる
+		// 詳しくは引数とかにかんしてはcallApiメソッドみればおk
+		$result = $this->InstagramApi->callApi('/users/search',array('q' => 'polidog'));
+	}
 }
