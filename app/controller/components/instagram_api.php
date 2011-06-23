@@ -6,6 +6,8 @@
  */
 class InstagramApiComponent extends Object
 {
+	const REQUEST_METHOD_GET = 'get';
+	const REQUEST_METHOD_POST = 'post';
 	
 	/**
 	 * 使用するコンポーネント
@@ -81,7 +83,7 @@ class InstagramApiComponent extends Object
 	 * @var string
 	 * @access public
 	 */
-	var $apiBaseUrl	= "http://api.instagram.com/v1/";
+	var $apiBaseUrl	= "https://api.instagram.com/v1";
 
 	/**
 	 * access tokenを保存するためn
@@ -228,7 +230,7 @@ class InstagramApiComponent extends Object
 	 * @param string $method
 	 * @param boolean $assoc
 	 */
-	function callApi($path,$data = array(),$method='get',$decode = true,$assoc = true) {
+	function callApi($path,$data = array(),$method=self::REQUEST_METHOD_GET,$decode = true,$assoc = true) {
 		$accessToken = $this->readAccessToken();
 		if ( !$accessToken ) {
 			return false;
